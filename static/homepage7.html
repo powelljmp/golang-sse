@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    	<title>EventSource Demo</title>
+        <meta charset="utf-8">
+       
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="//code.jquery.com/jquery.js"></script>        
+        
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+        
+        
+        <style>
+        	body {
+        		background-color:#1A1a1A; 
+        		padding-top: 100px; 
+        	}
+        	#timestamp {
+        		display: inline-block;
+        	}  
+        	 #server{
+        	 	padding: 0 1%;
+        	 }     	
+        	.alert {
+        		overflow: hidden;
+        	}
+        	.alert p {
+        		font-size: 0.9em;
+        	}
+        	.navbar {
+        		color: white;
+        	}       	
+        	@media (min-width: 768px) {
+        		.alert {
+        			height: 120px;
+        			padding: 5px;
+        		}	        	
+        	}
+        </style>
+              
+        <script >
+        var cPass 	= 0
+        var cFail 	= 0        
+        var x 		= 0;
+        //simple loading bar
+        var interval = setInterval(function() {
+              // Do something every 1 seconds
+              $("div#progress").css("width",x+"%");
+              x=x+12
+        }, 6000);
+        
+        
+        $(function() {
+        	var u = ''
+            var source = new EventSource('/updates');
+            source.onopen = function (event) {
+                console.log("eventsource connection open");
+            };
+            
+            source.onerror = function(event) {
+                if (event.target.readyState === 0) {
+                    console.log("reconnecting to eventsource");
+                } else {
+                    console.log("eventsource error");
+                }
+            };
+            
+            source.onmessage = function(event) {
+         		//clear loading interval
+   				clearInterval(interval);
+    			$("div.progress").css("display","none"); 
+    			
+    			//init vars      
+        		var d = event.data.split("-|-");        		
+      			var highlight 	= "alert alert-success"
+      			var code 		= d[0]
+      			var contents 	= d[1]
+      			var tag 		= d[2]
+      			var target 		= "#pass" 
+      			var divType		= "col col-md-1"
+      			var glyphicon	= '';
+      			  
+      			//command *clear* reset page    			   	    	
+            	if (event.data == "clear"){
+            		$('#timestamp').html("").show("fast")
+            		$('#fail').html("").show("fast")
+            		$('#pass').html("").show("fast")
+            	} else {   
+            		//command *000* header information        		
+             		if (event.data.substr(0,3) == 000){
+             			highlight	= ''
+             			target 		= "#timestamp" 
+             			contents	= event.data.substr(3)
+             			divType		= ''   
+             			tag 		= ''
+             			cPass 		= 0
+             			cFail 		= 0
+             			
+             			$('<div>', {
+             			    class: divType+" "+highlight,
+             			    css: {
+             			    	display: "none"
+             			    }
+             			})
+             			.prependTo(target)
+             			.show("fast")
+             			.prepend("<h5>"+contents+"</h5>");
+             			
+             		} else {
+             			//normal response data
+             		 	glyphicon	= "<a title='"+contents+"' href='"+contents+"' target='__blank'><span class='glyphicon glyphicon-open'></span></a>";
+             		 	
+             		 	//header non 200 response  		 	
+             			if (code.substr(0,3) != 200){
+	            			highlight 	= "alert alert-danger"
+	            			target 		= "#fail"
+	            			divType		= "col col-md-3"
+	            			cFail++;
+	            			$("#countFail").html(cFail)
+	            			
+		            		$('<div>', {
+		            		    class: divType,
+		            		    css: {
+		            		    	display: "none"
+		            		    }
+		            		})
+		            		.appendTo(target)
+		            		.show("fast")
+		            		.prepend("<div class='"+highlight+"'>"+glyphicon+"<em> TAG:<br />"+tag+"</em><p class='visible-desktop'>"+contents+"</p></div>");
+	            		}else{
+	            			//200 header response
+	            			cPass++;
+	            			$("#countPass").html(cPass)
+	            			
+		            		$('<div>', {
+		            		    class: divType,
+		            		    css: {
+		            		    	display: "none"
+		            		    }
+		            		})
+							.appendTo(target)
+							.show("fast")	            		
+							.prepend("<div class='"+highlight+"'>"+glyphicon+"<em> TAG: "+tag+"</em></div>");
+	            		}
+	            	} 	               
+                }
+            };              
+        });
+        </script>
+	</head>
+    <body>      
+   		<div class="navbar navbar-fixed-top navbar-inverse">  		 	
+   			<span>Pass <span class="label label-success" id="countPass">0</span></span>
+  			<span>Fail <span class="label label-danger" id="countFail">0</span></span> 			
+  			<span id="timestamp"></span>
+   		 </div>   		                     
+        <div id="server">
+        	<div class="progress progress-striped active">
+        	  	<div class="progress-bar progress-bar-info"  id="progress" style="width:0%"></div>
+        	</div>       
+        	<div id="fail" class="row-fluid flex row"></div>
+        	<div id="pass" class="row-fluid flex row"></div>
+        </div>      
+    </body>
+</html>
